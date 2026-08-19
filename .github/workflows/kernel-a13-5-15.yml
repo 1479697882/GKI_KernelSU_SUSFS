@@ -19,6 +19,33 @@ on:
           - SukiSU(40548)
           - ReSukiSU
         default: ReSukiSU
+      target_sub_level:
+        description: "选择构建目标 (选择 all 构建全部，选择数字仅构建单作业)"
+        required: true
+        type: choice
+        options:
+          - "all"
+          - "194"
+          - "189"
+          - "185"
+          - "180"
+          - "178"
+          - "170"
+          - "167"
+          - "153"
+          - "151"
+          - "149"
+          - "148"
+          - "144"
+          - "137"
+          - "123"
+          - "119"
+          - "104"
+          - "94"
+          - "78"
+          - "74"
+          - "X"
+        default: "all" # 默认只跑 194
       version:
         description: "自定义版本名 (可选)"
         required: false
@@ -137,6 +164,7 @@ on:
 
 jobs:
   build-kernels-a13-5-15:
+    if: ${{ github.event_name == 'workflow_call' || inputs.target_sub_level == 'all' || inputs.target_sub_level == matrix.sub_level }}
     name: "5.15.${{ matrix.sub_level }}-${{ matrix.os_patch_level }}"
     strategy:
       fail-fast: false
