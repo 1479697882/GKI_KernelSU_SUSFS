@@ -19,6 +19,36 @@ on:
           - SukiSU(40548)
           - ReSukiSU
         default: ReSukiSU
+      target_sub_level:
+        description: "选择构建目标 (选择 all 构建全部，选择数字仅构建单作业)"
+        required: true
+        type: choice
+        options:
+          - "all"
+          - "162"
+          - "157"
+          - "145"
+          - "141"
+          - "138"
+          - "134"
+          - "129"
+          - "128"
+          - "124"
+          - "118"
+          - "115"
+          - "112"
+          - "99"
+          - "93"
+          - "90"
+          - "84"
+          - "78"
+          - "75"
+          - "68"
+          - "57"
+          - "43"
+          - "25"
+          - "X"
+        default: "162" # 默认只跑最新的 162
       version:
         description: "自定义版本名 (可选)"
         required: false
@@ -90,6 +120,10 @@ on:
       kernelsu_variant:
         required: true
         type: string
+      target_sub_level:
+        required: false
+        type: string
+        default: "all"
       version:
         required: false
         type: string
@@ -136,58 +170,55 @@ on:
         default: false
 
 jobs:
+  # 第一步：计算要运行的 matrix 项
+  set-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          TARGET="${{ inputs.target_sub_level || 'all' }}"
+          ALL_ITEMS='[
+            {"sub_level": "25", "os_patch_level": "2023-10"},
+            {"sub_level": "43", "os_patch_level": "2023-11"},
+            {"sub_level": "57", "os_patch_level": "2024-01"},
+            {"sub_level": "68", "os_patch_level": "2024-03"},
+            {"sub_level": "75", "os_patch_level": "2024-05"},
+            {"sub_level": "78", "os_patch_level": "2024-06"},
+            {"sub_level": "84", "os_patch_level": "2024-07"},
+            {"sub_level": "90", "os_patch_level": "2024-08"},
+            {"sub_level": "93", "os_patch_level": "2024-09"},
+            {"sub_level": "99", "os_patch_level": "2024-10"},
+            {"sub_level": "112", "os_patch_level": "2024-11"},
+            {"sub_level": "115", "os_patch_level": "2024-12"},
+            {"sub_level": "118", "os_patch_level": "2025-01"},
+            {"sub_level": "124", "os_patch_level": "2025-02"},
+            {"sub_level": "128", "os_patch_level": "2025-03"},
+            {"sub_level": "129", "os_patch_level": "2025-04"},
+            {"sub_level": "134", "os_patch_level": "2025-05"},
+            {"sub_level": "138", "os_patch_level": "2025-06"},
+            {"sub_level": "141", "os_patch_level": "2025-07"},
+            {"sub_level": "145", "os_patch_level": "2025-09"},
+            {"sub_level": "157", "os_patch_level": "2025-12"},
+            {"sub_level": "162", "os_patch_level": "2026-03"},
+            {"sub_level": "X", "os_patch_level": "lts"}
+          ]'
+
+          if [ "$TARGET" = "all" ]; then
+            JSON_OUT="$ALL_ITEMS"
+          else
+            JSON_OUT=$(echo "$ALL_ITEMS" | jq -c "[.[] | select(.sub_level == \"$TARGET\")]")
+          fi
+
+          echo "matrix={\"include\":$JSON_OUT}" >> $GITHUB_OUTPUT
+
   build-kernels-a14-6-1:
+    needs: set-matrix
     name: "6.1.${{ matrix.sub_level }}-${{ matrix.os_patch_level }}"
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - sub_level: "25"
-            os_patch_level: "2023-10"
-          - sub_level: "43"
-            os_patch_level: "2023-11"
-          - sub_level: "57"
-            os_patch_level: "2024-01"
-          - sub_level: "68"
-            os_patch_level: "2024-03"
-          - sub_level: "75"
-            os_patch_level: "2024-05"
-          - sub_level: "78"
-            os_patch_level: "2024-06"
-          - sub_level: "84"
-            os_patch_level: "2024-07"
-          - sub_level: "90"
-            os_patch_level: "2024-08"
-          - sub_level: "93"
-            os_patch_level: "2024-09"
-          - sub_level: "99"
-            os_patch_level: "2024-10"
-          - sub_level: "112"
-            os_patch_level: "2024-11"
-          - sub_level: "115"
-            os_patch_level: "2024-12"
-          - sub_level: "118"
-            os_patch_level: "2025-01"
-          - sub_level: "124"
-            os_patch_level: "2025-02"
-          - sub_level: "128"
-            os_patch_level: "2025-03"
-          - sub_level: "129"
-            os_patch_level: "2025-04"
-          - sub_level: "134"
-            os_patch_level: "2025-05"
-          - sub_level: "138"
-            os_patch_level: "2025-06"
-          - sub_level: "141"
-            os_patch_level: "2025-07"
-          - sub_level: "145"
-            os_patch_level: "2025-09"
-          - sub_level: "157"
-            os_patch_level: "2025-12"
-          - sub_level: "162"
-            os_patch_level: "2026-03"
-          - sub_level: "X"
-            os_patch_level: "lts"
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     uses: ./.github/workflows/build.yml
     secrets: inherit
     with:
